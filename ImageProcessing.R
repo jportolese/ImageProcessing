@@ -68,7 +68,21 @@ rgrid <- raster(ls.B7)
 B7_Subset <- crop(rgrid, StudyArea)
 summary(B7_Subset)
 
+SubsetImg <- stack(B1_Subset, B2_Subset, B3_Subset, B4_Subset, B5_Subset
+              , B6_Subset, B7_Subset)
 
-plot(B4_Subset,
-     main="Blue Band of the Landsat Image")
+names(SubsetImg) <- paste0("B", c(1:7)) 
+class(SubsetImg)
 
+SubsetImg[45, 1]
+summary(SubsetImg$B4)
+
+plotRGB( SubsetImg * (SubsetImg >= 0), r = 5, g = 3, b = 2, scale = 12000
+         , stretch ='lin')
+
+plot(ls.B1, breaks = seq(0, 14000, 2000), col= 3,
+           main="Blue Band of the Landsat Image")
+plot(StudyArea)
+hist(B1_Subset)
+nrow(B1_Subset)
+dim(ls.B1)
