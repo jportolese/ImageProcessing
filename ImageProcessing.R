@@ -121,4 +121,21 @@ B7 <- class2$B7
 
 plot(B1, B2)
 plot(B2, B3)
-plot(B3, B4)
+plot(B2, B5)
+plot(B4, B5, main = "Band4 vs Band 5 Bare Ground"
+     , xlab = "Band 4", ylab = "Band 5",
+     pch = 15, frame = FALSE)
+abline(lm(B5~B4, data = class2), col= "blue")
+
+# apply randomforest to training set 
+library(caret)
+mod <- train(as.factor(class)~ B3 + B4 + B5, method = "rf", data = dfAll)
+mod
+
+beginCluster()
+preds_rf <- clusterR(SubsetImg, raster::predict, args = list(model = mod))
+endCluster()
+
+preds_rf
+plot(preds_rf)
+
