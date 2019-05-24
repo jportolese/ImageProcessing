@@ -1,5 +1,6 @@
 library(rgdal)
 library(raster)
+library(caret)
 path <- "C:/JP/USGS/"
 setwd(path)
 
@@ -25,6 +26,10 @@ ls.B5.1 <- raster(ls.B5)
 plot(ls.B5.1,
      main="Near Infrared Band of the Landsat Image")
 
+plot(B2_Subset, 
+     main= "Band 2 of Subsetted image")
+
+
 ls.B5hist <- hist(ls.B5@data$band1,
                   breaks =10,
                   main = "Frequecy Distribution of pixels in\n Near-Infrared Band (NIR)",
@@ -33,16 +38,22 @@ ls.B5hist <- hist(ls.B5@data$band1,
 
 # clip each spatial grid dataframe using a shapefile
 
-# load shapefile
-StudyArea <- readOGR("C:/JP/DataScienceClasses/Capstone", "StudyArea1")
+# load shapefiles
+StudyArea <- readOGR("C:\\JP\\DataScienceClasses\\Capstone", "StudyArea1")
 StudyArea
-ls.B1@proj4string
+
+
+# load the training area shapefile
+
+TrainSets <- readOGR("C:\\JP\\DataScienceClasses\\Capstone\\LandCover", "TrainAreas")
+TrainSets
 
 # Subset band1 using the StudyArea layer
 library(raster)
 rgrid <- raster(ls.B1)
 B1_Subset <- crop(rgrid, StudyArea)
 summary(B1_Subset)
+
 
 rgrid <- raster(ls.B2)
 B2_Subset <- crop(rgrid, StudyArea)
@@ -77,12 +88,37 @@ class(SubsetImg)
 SubsetImg[45, 1]
 summary(SubsetImg$B4)
 
-plotRGB( SubsetImg * (SubsetImg >= 0), r = 5, g = 3, b = 2, scale = 12000
+plotRGB( SubsetImg * (SubsetImg >= 0), r = 4, g = 3, b = 2, scale = 12000
          , stretch ='lin')
 
-plot(ls.B1, breaks = seq(0, 14000, 2000), col= 3,
-           main="Blue Band of the Landsat Image")
-plot(StudyArea)
-hist(B1_Subset)
-nrow(B1_Subset)
-dim(ls.B1)
+
+responseCol <- "covcode"
+
+dfAll <- data.frame(matrix(vector(), nrow = 0, ncol=length(names(SubsetImg))+ 1))
+for (i in 1:length(unique(TrainSets[[responseCol]]))){
+  category <- unique(TrainSets[[responseCol]])[i]
+  categorymap <- TrainSets[TrainSets[[responseCol]] == category,]
+  dataset <- extract(SubsetImg, categorymap)
+  dataset <- sapply(dataset, function(x){cbind(x, class = rep(category, nrow(x)))})
+  df <- do.call("rbind", dataset)
+  dfAll <- rbind(dfAll, df)
+}
+
+dfAll
+
+library(dplyr)
+class2 <- filter(dfAll, class == 2)
+
+class2
+
+B1 <- class2$B1
+B2 <- class2$B2
+B3 <- class2$B3
+B4 <- class2$B4
+B5 <- class2$B5
+B6 <- class2$B6
+B7 <- class2$B7
+
+plot(B1, B2)
+plot(B2, B3)
+plot(B3, B4)
