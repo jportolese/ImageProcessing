@@ -48,6 +48,7 @@ StudyArea
 TrainSets <- readOGR("C:\\JP\\DataScienceClasses\\Capstone\\LandCover", "TrainAreas")
 TrainSets
 
+
 # Subset band1 using the StudyArea layer
 library(raster)
 rgrid <- raster(ls.B1)
@@ -107,17 +108,22 @@ for (i in 1:length(unique(TrainSets[[responseCol]]))){
 dfAll
 
 library(dplyr)
-class2 <- filter(dfAll, class == 2)
+class6 <- filter(dfAll, class == 6)
+class21 <- filter(dfAll, class == 21)
 
-class2
 
-B1 <- class2$B1
-B2 <- class2$B2
-B3 <- class2$B3
-B4 <- class2$B4
-B5 <- class2$B5
-B6 <- class2$B6
-B7 <- class2$B7
+# run some r to get the standard deviation of each band by landcover class to identify training pixels that have wide variations
+
+Summarytable <- table(dfAll$class)
+Summarytable
+
+B1 <- class6$B1
+B2 <- class6$B2
+B3 <- class6$B3
+B4 <- class6$B4
+B5 <- class6$B5
+B6 <- class6$B6
+B7 <- class6$B7
 
 plot(B1, B2)
 plot(B2, B3)
@@ -126,10 +132,14 @@ plot(B4, B5, main = "Band4 vs Band 5 Bare Ground"
      , xlab = "Band 4", ylab = "Band 5",
      pch = 15, frame = FALSE)
 abline(lm(B5~B4, data = class2), col= "blue")
+plot(B2, B6, main = "Band2 vs Band 6"
+     , xlab = "Band 2", ylab = "Band 6",
+     pch = 15, frame = FALSE)
+abline(lm(B2~B6, data = class6), col= "blue")
 
 # apply randomforest to training set 
 library(caret)
-mod <- train(as.factor(class)~ B3 + B4 + B5, method = "rf", data = dfAll)
+mod <- train(as.factor(class)~ B1 + B2 + B3 + B4 + B5 + B6 + B7, method = "rf", data = dfAll)
 mod
 
 beginCluster()
@@ -138,4 +148,50 @@ endCluster()
 
 preds_rf
 plot(preds_rf)
+names(preds_rf)
 
+freq(preds_rf)
+
+#Accuracy Assessment
+
+# load Land Cover feature class from file geodatabase
+
+fgdb <- "C:\\JP\\DataScienceClasses\\Capstone\\LandCover\\lclu_gdb\\MA_LCLU2016.gdb"
+LC_fc <- readOGR(dsn=fgdb,layer="LULC_Test_Fix1")
+TestArea <- readOGR(dsn=fgdb, layer = "TestAreaBnd")
+names(LC_fc)
+crs(LC_fc)
+extent(LC_fc)
+
+# create a test subset image of the final predictions
+# for comparison to actual Landcover data
+
+preds_rf_test <- crop(preds_rf, TestArea)
+preds_rf_test
+
+# got the row and column count from prediction image use it
+# to create an empty raster to rasterize the Land Cover 
+# Check image LC_fc
+
+LC_GroundTruth <- raster(nrow = 731, ncol = 1497
+                         , resolution =30, crs = 
+                           "+proj=utm +zone=19 +datum=WGS84 +units=m +no_defs
+                         +ellps=WGS84 +towgs84=0,0,0"
+                         , xmn = 292828.3
+                         , ymn = 4674141
+                         , xmx = 337726.8 
+                         , ymx = 4696055)
+
+# Run this using parallel processing for speed.
+beginCluster()
+GroundTruthImage <- rasterize(LC_fc, LC_GroundTruth, "COVERCODE")
+endCluster()
+
+writeRaster(GroundTruthImage, "C:\\JP\\DataScienceClasses\\Capstone\\LandCover\\LC_GroundTruth.img")
+writeRaster(preds_rf_test,"C:\\JP\\DataScienceClasses\\Capstone\\LandCover\\classifiedImage.img" )
+
+ncol(GroundTruthImage)
+plot(GroundTruthImage)
+
+freq(preds_rf_test)
+freq(GroundTruthImage)
