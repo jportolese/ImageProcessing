@@ -18,21 +18,17 @@ slotNames(ls.B1)
 summary(ls.B5@data)
 ls.B5@proj4string
 ls.B5@bbox
-ls.B5@grid
-ls.B5@data
 
 # plot band 5
 ls.B5.1 <- raster(ls.B5)
 plot(ls.B5.1,
      main="Near Infrared Band of the Landsat Image")
 
-plot(B2_Subset, 
-     main= "Band 2 of Subsetted image")
 
 
 ls.B5hist <- hist(ls.B5@data$band1,
                   breaks =10,
-                  main = "Frequecy Distribution of pixels in\n Near-Infrared Band (NIR)",
+                  main = "Frequency Distribution of pixels in\n Near-Infrared Band (NIR)",
                   col = "wheat3",
                   xlab = "Reflectance in NIR (DN values)")
 
@@ -109,7 +105,7 @@ dfAll
 
 library(dplyr)
 class6 <- filter(dfAll, class == 6)
-class21 <- filter(dfAll, class == 21)
+class18 <- filter(dfAll, class == 18)
 
 
 # run some r to get the standard deviation of each band by landcover class to identify training pixels that have wide variations
@@ -117,25 +113,27 @@ class21 <- filter(dfAll, class == 21)
 Summarytable <- table(dfAll$class)
 Summarytable
 
-B1 <- class6$B1
-B2 <- class6$B2
-B3 <- class6$B3
-B4 <- class6$B4
-B5 <- class6$B5
-B6 <- class6$B6
-B7 <- class6$B7
+B1 <- class18$B1
+B2 <- class18$B2
+B3 <- class18$B3
+B4 <- class18$B4
+B5 <- class18$B5
+B6 <- class18$B6
+B7 <- class18$B7
+
+hist(B7)
 
 plot(B1, B2)
 plot(B2, B3)
 plot(B2, B5)
 plot(B4, B5, main = "Band4 vs Band 5 Bare Ground"
      , xlab = "Band 4", ylab = "Band 5",
-     pch = 15, frame = FALSE)
-abline(lm(B5~B4, data = class2), col= "blue")
+     pch = 15, frame = TRUE,
+abline(lm(B5~B4, data = class18), col= "blue"))
 plot(B2, B6, main = "Band2 vs Band 6"
      , xlab = "Band 2", ylab = "Band 6",
-     pch = 15, frame = FALSE)
-abline(lm(B2~B6, data = class6), col= "blue")
+     pch = 15, frame = FALSE,
+abline(lm(B2~B6, data = class18), col= "blue"))
 
 # apply randomforest to training set 
 library(caret)
@@ -143,14 +141,14 @@ mod <- train(as.factor(class)~ B1 + B2 + B3 + B4 + B5 + B6 + B7, method = "rf", 
 mod
 
 beginCluster()
-preds_rf <- clusterR(SubsetImg, raster::predict, args = list(model = mod))
+LC_Preds <- clusterR(SubsetImg, raster::predict, args = list(model = mod))
 endCluster()
 
-preds_rf
-plot(preds_rf)
-names(preds_rf)
+LC_Preds
+plot(LC_Preds)
+names(LC_Preds)
 
-freq(preds_rf)
+freq(LC_Preds)
 
 #Accuracy Assessment
 
@@ -166,12 +164,17 @@ extent(LC_fc)
 # create a test subset image of the final predictions
 # for comparison to actual Landcover data
 
-preds_rf_test <- crop(preds_rf, TestArea)
-preds_rf_test
+LC_Preds_test <- crop(LC_Preds, TestArea)
+LC_Preds_test
+class(LC_Preds_test)
+rgdal
 
 # got the row and column count from prediction image use it
 # to create an empty raster to rasterize the Land Cover 
 # Check image LC_fc
+
+# load gdalUtils package to try the gdal_rasterize function instead of rasterize
+#library(gdalUtils)
 
 LC_GroundTruth <- raster(nrow = 731, ncol = 1497
                          , resolution =30, crs = 
@@ -188,10 +191,46 @@ GroundTruthImage <- rasterize(LC_fc, LC_GroundTruth, "COVERCODE")
 endCluster()
 
 writeRaster(GroundTruthImage, "C:\\JP\\DataScienceClasses\\Capstone\\LandCover\\LC_GroundTruth.img")
-writeRaster(preds_rf_test,"C:\\JP\\DataScienceClasses\\Capstone\\LandCover\\classifiedImage.img" )
+writeRaster(LC_Preds_test,"C:\\JP\\DataScienceClasses\\Capstone\\LandCover\\classifiedImage.img", overwrite = TRUE )
 
 ncol(GroundTruthImage)
 plot(GroundTruthImage)
 
-freq(preds_rf_test)
-freq(GroundTruthImage)
+freq(LC_Preds_test)
+plot(LC_Preds_test)
+
+Actual_LC <- readGDAL("C:\\JP\\DataScienceClasses\\Capstone\\LandCover\\LC_GroundTruth.img")
+
+# Accuracy Assessmentlibrary(dismo)
+library(dismo)
+set.seed(99)
+j <- kfold(dfAll, k = 5, by=dfAll$class)
+table(j)
+
+library(rpart)
+x <- list()
+for (k in 1:5) {
+  train <- dfAll[j!= k, ]
+  test <- dfAll[j == k, ]
+  cart <- rpart(as.factor(class)~., data=train, method = 'class', minsplit = 5)
+  pclass <- predict(cart, test, type='class')
+  # create a data.frame using the reference and prediction
+  x[[k]] <- cbind(test$class, as.integer(pclass))
+}
+
+y <- do.call(rbind, x)
+y <- data.frame(y)
+colnames(y) <- c('observed', 'predicted')
+conmat <- table(y)
+# change the name of the classes
+colnames(conmat) <- classdf$classnames
+rownames(conmat) <- classdf$classnames
+write.csv(conmat, "C:\\JP\\DataScienceClasses\\Capstone\\LandCover\\conmat.xlsx")
+
+library(xlsx)
+write.xlsx(conmat, "C:\\JP\\DataScienceClasses\\Capstone\\LandCover\\conmat.xlsx")
+
+class(conmat)
+
+Summarytable <- table(dfAll$class)
+Summarytable
