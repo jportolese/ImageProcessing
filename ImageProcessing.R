@@ -39,10 +39,7 @@ StudyArea <- readOGR("C:\\JP\\DataScienceClasses\\Capstone", "StudyArea1")
 StudyArea
 
 
-# load the training area shapefile
 
-TrainSets <- readOGR("C:\\JP\\DataScienceClasses\\Capstone\\LandCover", "TrainAreas")
-TrainSets
 
 
 # Subset band1 using the StudyArea layer
@@ -89,19 +86,7 @@ plotRGB( SubsetImg * (SubsetImg >= 0), r = 4, g = 3, b = 2, scale = 12000
          , stretch ='lin')
 
 
-responseCol <- "covcode"
 
-dfAll <- data.frame(matrix(vector(), nrow = 0, ncol=length(names(SubsetImg))+ 1))
-for (i in 1:length(unique(TrainSets[[responseCol]]))){
-  category <- unique(TrainSets[[responseCol]])[i]
-  categorymap <- TrainSets[TrainSets[[responseCol]] == category,]
-  dataset <- extract(SubsetImg, categorymap)
-  dataset <- sapply(dataset, function(x){cbind(x, class = rep(category, nrow(x)))})
-  df <- do.call("rbind", dataset)
-  dfAll <- rbind(dfAll, df)
-}
-
-dfAll
 
 library(dplyr)
 class6 <- filter(dfAll, class == 6)
@@ -135,6 +120,46 @@ plot(B2, B6, main = "Band2 vs Band 6"
      pch = 15, frame = FALSE,
 abline(lm(B2~B6, data = class18), col= "blue"))
 
+
+#Accuracy Assessment
+
+# load feature classes from file geodatabase
+
+fgdb <- "C:\\JP\\DataScienceClasses\\Capstone\\LandCover\\lclu_gdb\\MA_LCLU2016.gdb"
+
+# Load landcover ground truth data
+LC_fc <- readOGR(dsn=fgdb,layer="LULC_Test_Fix1")
+
+# Load Test Area Boundary
+TestArea <- readOGR(dsn=fgdb, layer = "TestAreaBnd")
+
+# Load Training Pixels 
+# load the training area shapefile
+
+TrainingPixels <- readOGR(dsn=fgdb, "TrainingAreas2")
+TrainingPixels
+
+
+#TrainingPixels <- readOGR(dsn=fgdb, layer = "TrainingPoints")
+#summary(TrainingPixels)
+
+
+
+responseCol <- "CovCode"
+
+dfAll <- data.frame(matrix(vector(), nrow = 0, ncol=length(names(SubsetImg))+ 1))
+for (i in 1:length(unique(TrainingPixels[[responseCol]]))){
+  category <- unique(TrainingPixels[[responseCol]])[i]
+  categorymap <- TrainingPixels[TrainingPixels[[responseCol]] == category,]
+  dataset <- extract(SubsetImg, categorymap)
+  dataset <- sapply(dataset, function(x){cbind(x, class = rep(category, nrow(x)))})
+  df <- do.call("rbind", dataset)
+  dfAll <- rbind(dfAll, df)
+}
+
+summary(dfAll)
+
+
 # apply randomforest to training set 
 library(caret)
 mod <- train(as.factor(class)~ B1 + B2 + B3 + B4 + B5 + B6 + B7, method = "rf", data = dfAll)
@@ -150,16 +175,6 @@ names(LC_Preds)
 
 freq(LC_Preds)
 
-#Accuracy Assessment
-
-# load Land Cover feature class from file geodatabase
-
-fgdb <- "C:\\JP\\DataScienceClasses\\Capstone\\LandCover\\lclu_gdb\\MA_LCLU2016.gdb"
-LC_fc <- readOGR(dsn=fgdb,layer="LULC_Test_Fix1")
-TestArea <- readOGR(dsn=fgdb, layer = "TestAreaBnd")
-names(LC_fc)
-crs(LC_fc)
-extent(LC_fc)
 
 # create a test subset image of the final predictions
 # for comparison to actual Landcover data
@@ -167,7 +182,6 @@ extent(LC_fc)
 LC_Preds_test <- crop(LC_Preds, TestArea)
 LC_Preds_test
 class(LC_Preds_test)
-rgdal
 
 # got the row and column count from prediction image use it
 # to create an empty raster to rasterize the Land Cover 
@@ -192,7 +206,8 @@ endCluster()
 
 writeRaster(GroundTruthImage, "C:\\JP\\DataScienceClasses\\Capstone\\LandCover\\LC_GroundTruth.img")
 writeRaster(LC_Preds_test,"C:\\JP\\DataScienceClasses\\Capstone\\LandCover\\classifiedImage.img", overwrite = TRUE )
-
+writeRaster(SubsetImg,"C:\\JP\\DataScienceClasses\\Capstone\\LandCover\\raw.img", overwrite = TRUE )
+writeRaster()
 ncol(GroundTruthImage)
 plot(GroundTruthImage)
 
@@ -201,7 +216,8 @@ plot(LC_Preds_test)
 
 Actual_LC <- readGDAL("C:\\JP\\DataScienceClasses\\Capstone\\LandCover\\LC_GroundTruth.img")
 
-# Accuracy Assessmentlibrary(dismo)
+# Accuracy Assessment
+
 library(dismo)
 set.seed(99)
 j <- kfold(dfAll, k = 5, by=dfAll$class)
@@ -223,14 +239,12 @@ y <- data.frame(y)
 colnames(y) <- c('observed', 'predicted')
 conmat <- table(y)
 # change the name of the classes
-colnames(conmat) <- classdf$classnames
-rownames(conmat) <- classdf$classnames
-write.csv(conmat, "C:\\JP\\DataScienceClasses\\Capstone\\LandCover\\conmat.xlsx")
-
-library(xlsx)
-write.xlsx(conmat, "C:\\JP\\DataScienceClasses\\Capstone\\LandCover\\conmat.xlsx")
-
-class(conmat)
+#colnames(conmat) <- dfAll$classnames
+#rownames(conmat) <-dfAll$classnames
+conmat
+write.csv(conmat, "C:\\JP\\DataScienceClasses\\Capstone\\LandCover\\conmat.csv") 
 
 Summarytable <- table(dfAll$class)
 Summarytable
+
+
