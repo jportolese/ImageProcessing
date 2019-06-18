@@ -2,34 +2,16 @@
 library(caret) #required for confusionMatrix()
 
 # import the ground truth image for actual landcover in the test area
-GroundTruthImg <- readGDAL("C:\\JP\\DataScienceClasses\\Capstone\\Rec_GrndTruth.img")
+GroundTruthImg <- readGDAL("C:\\JP\\DataScienceClasses\\Capstone\\FinalGroundTruth.img")
 GroundTruth <- as.vector(GroundTruthImg$band1)
 
-aggregate(GroundTruthImg$band1)
 
+# Export the raster layers of ground truth and final model classified image.
+writeRaster(LC_Preds_MV, "C:\\JP\\DataScienceClasses\\Capstone\\LandCover\\ClassifiedMV.img", overwrite = TRUE)
+writeRaster(GroundTruthImg, "C:\\JP\\DataScienceClasses\\Capstone\\LandCover\\GroundTruth.img")
 
-writeRaster(LC_Preds_MV, "C:\\JP\\DataScienceClasses\\Capstone\\LandCover\\ClassifiedMV.img")
-table(GroundTruth)
+# create a confusion between the groundtruth and predicted vectors
+confusionMatrix(table(GroundTruth,predictions))
 
-#Convert classified image to a vector for comparison
-predictions <- as.integer(as.vector(LC_Preds_MV$layer)) #values from classification
-#GroundTruth <- GroundTruth #reference values (observed/checked) for validation 
-
-length(predictions)
-table(predictions)
-table(GroundTruth)
-
-
-GroundTruth[is.na(GroundTruth[])] <- 21 
-length(GroundTruth)
-
-table(GroundTruth,predictions) #shows confusion matrix
-dimnames(tab)[[1]] = c("Impervious","Developed Open Space", "Cultivated Land", "Pasture Hay", "Grassland", "Deciduous Forest",
-                       "Evergreen Forest","Scrub/Shrub", "Pal For Wetland", "Pal Scrub Wetland", "Pal Emerge Wetland", 
-                       "Est Emerge Wetland", "Unconsolidated Shore", "Bare Ground", "Water")
-
-
-conmatTest <- confusionMatrix(table(GroundTruth,predictions))
-write.csv(table(GroundTruth,predictions), "C:\\JP\\DataScienceClasses\\Capstone\\ConfusionMatrix.csv")
-
-table(GroundTruth)
+# write the results to a csv for reformatting in excel.
+write.csv(confusionMatrix(table(GroundTruth,predictions)), "C:\\JP\\DataScienceClasses\\Capstone\\ConfusionMatrixfinal.csv")

@@ -102,7 +102,70 @@ plotRGB( SubsetImg * (SubsetImg >= 0), r = 4, g = 3, b = 2, scale = 12000
 
 
 
+# Subset each band using the StudyArea layer 
+library(raster)
+rgrid <- raster(new_B1)
+B1_SubNew <- crop(rgrid, StudyArea)
+#summary(B1_Subset)
 
+
+rgrid <- raster(new_B2)
+B2_SubNew <- crop(rgrid, StudyArea)
+#summary(B2_Subset)
+
+rgrid <- raster(new_B3)
+B3_SubNew <- crop(rgrid, StudyArea)
+#summary(B3_Subset)
+
+rgrid <- raster(new_B4)
+B4_SubNew <- crop(rgrid, StudyArea)
+#summary(B4_Subset)
+
+rgrid <- raster(new_B5)
+B5_SubNew <- crop(rgrid, StudyArea)
+#summary(B5_Subset)
+
+rgrid <- raster(new_B6)
+B6_SubNew <- crop(rgrid, StudyArea)
+#summary(B6_Subset)
+
+rgrid <- raster(new_B7)
+B7_SubNew <- crop(rgrid, StudyArea)
+#summary(B7_Subset)
+
+
+# MV image for classification
+
+# Subset each band using the MV (test) study area layer 
+library(raster)
+rgrid <- raster(new_B1)
+B1_SubMV <- crop(rgrid, MVSubsetBND)
+#summary(B1_Subset)
+
+
+rgrid <- raster(new_B2)
+B2_SubMV <- crop(rgrid, MVSubsetBND)
+#summary(B2_Subset)
+
+rgrid <- raster(new_B3)
+B3_SubMV <- crop(rgrid, MVSubsetBND)
+#summary(B3_Subset)
+
+rgrid <- raster(new_B4)
+B4_SubMV <- crop(rgrid, MVSubsetBND)
+#summary(B4_Subset)
+
+rgrid <- raster(new_B5)
+B5_SubMV <- crop(rgrid, MVSubsetBND)
+#summary(B5_Subset)
+
+rgrid <- raster(new_B6)
+B6_SubMV <- crop(rgrid, MVSubsetBND)
+#summary(B6_Subset)
+
+rgrid <- raster(new_B7)
+B7_SubMV <- crop(rgrid, MVSubsetBND)
+#summary(B7_Subset)
 
 
 
